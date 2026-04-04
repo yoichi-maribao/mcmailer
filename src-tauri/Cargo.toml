@@ -1,0 +1,33 @@
+[package]
+name = "mcmailer"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "mcmailer_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "mcmailer"
+path = "src/main.rs"
+
+[dependencies]
+tauri = { version = "2", features = [
+  "devtools"
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+base64 = "0.22"
+url = "2"
+open = "5"
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dev-dependencies]
+serde_json = "1"
+tempfile = "3"
+tokio = { version = "1", features = ["full", "test-util"] }

@@ -1,0 +1,5 @@
+node_modules
+src-tauri/gen/
+dist/
+.env
+.takt

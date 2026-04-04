@@ -1,0 +1,6 @@
+/Users/suzakiyoichi/Documents/development/personal/mcmailer/src-tauri/target/debug/deps/slab-77d692120509ada3.d: /Users/suzakiyoichi/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/slab-0.4.12/src/lib.rs /Users/suzakiyoichi/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/slab-0.4.12/src/builder.rs
+
+/Users/suzakiyoichi/Documents/development/personal/mcmailer/src-tauri/target/debug/deps/libslab-77d692120509ada3.rmeta: /Users/suzakiyoichi/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/slab-0.4.12/src/lib.rs /Users/suzakiyoichi/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/slab-0.4.12/src/builder.rs
+
+/Users/suzakiyoichi/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/slab-0.4.12/src/lib.rs:
+/Users/suzakiyoichi/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/slab-0.4.12/src/builder.rs:
