@@ -1,10 +1,10 @@
-use mcmailer_lib::pubsub_message::{parse_pubsub_push_message, PubSubPushBody, PubSubParseError};
+use mcmailer_lib::pubsub_message::{decode_message_data, PubSubParseError, PullResponse};
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // --- parse_pubsub_push_message ---
+    // --- decode_message_data ---
 
     #[test]
     fn should_decode_valid_base64_message() {
@@ -13,7 +13,7 @@ mod tests {
         let data = "aGVsbG8gd29ybGQ=";
 
         // When: parsing the message
-        let result = parse_pubsub_push_message(data);
+        let result = decode_message_data(data);
 
         // Then: returns the decoded string
         assert!(result.is_ok());
@@ -29,7 +29,7 @@ mod tests {
         let encoded = STANDARD.encode(json);
 
         // When: parsing the message
-        let result = parse_pubsub_push_message(&encoded);
+        let result = decode_message_data(&encoded);
 
         // Then: returns the decoded JSON string
         assert!(result.is_ok());
@@ -44,7 +44,7 @@ mod tests {
         let data = "not-valid-base64!!!";
 
         // When: parsing the message
-        let result = parse_pubsub_push_message(data);
+        let result = decode_message_data(data);
 
         // Then: returns InvalidBase64 error
         assert!(result.is_err());
@@ -60,32 +60,49 @@ mod tests {
         let encoded = STANDARD.encode(invalid_utf8);
 
         // When: parsing the message
-        let result = parse_pubsub_push_message(&encoded);
+        let result = decode_message_data(&encoded);
 
         // Then: returns InvalidUtf8 error
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), PubSubParseError::InvalidUtf8(_)));
     }
 
-    // --- PubSubPushBody deserialization ---
+    // --- PullResponse deserialization ---
 
     #[test]
-    fn should_deserialize_pubsub_push_body() {
-        // Given: a JSON payload matching Google Pub/Sub push format
+    fn should_deserialize_pull_response_with_messages() {
+        // Given: a JSON payload matching Google Pub/Sub pull response format
         let json = r#"{
-            "message": {
-                "data": "aGVsbG8=",
-                "messageId": "msg-001"
-            },
-            "subscription": "projects/my-project/subscriptions/my-sub"
+            "receivedMessages": [
+                {
+                    "ackId": "ack-001",
+                    "message": {
+                        "data": "aGVsbG8=",
+                        "messageId": "msg-001"
+                    }
+                }
+            ]
         }"#;
 
         // When: deserializing
-        let body: PubSubPushBody = serde_json::from_str(json).unwrap();
+        let response: PullResponse = serde_json::from_str(json).unwrap();
 
         // Then: fields are correctly mapped
-        assert_eq!(body.message.data, "aGVsbG8=");
-        assert_eq!(body.message.message_id, "msg-001");
-        assert_eq!(body.subscription, "projects/my-project/subscriptions/my-sub");
+        assert_eq!(response.received_messages.len(), 1);
+        assert_eq!(response.received_messages[0].ack_id, "ack-001");
+        assert_eq!(response.received_messages[0].message.data, "aGVsbG8=");
+        assert_eq!(response.received_messages[0].message.message_id, "msg-001");
+    }
+
+    #[test]
+    fn should_deserialize_empty_pull_response() {
+        // Given: a JSON payload with no messages (empty pull)
+        let json = r#"{}"#;
+
+        // When: deserializing
+        let response: PullResponse = serde_json::from_str(json).unwrap();
+
+        // Then: received_messages defaults to empty vec
+        assert!(response.received_messages.is_empty());
     }
 }

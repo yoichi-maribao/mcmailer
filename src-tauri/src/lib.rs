@@ -9,7 +9,7 @@ pub mod notification_service;
 pub mod oauth;
 pub mod polling;
 pub mod pubsub_message;
-pub mod sse_client;
+pub mod pubsub_pull;
 pub mod token;
 pub mod types;
 pub mod watch;

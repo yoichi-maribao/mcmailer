@@ -3,22 +3,28 @@ use base64::Engine;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-pub struct PubSubPushBody {
-    pub message: PubSubPushMessage,
-    #[allow(dead_code)]
-    pub subscription: String,
+#[serde(rename_all = "camelCase")]
+pub struct PullResponse {
+    #[serde(default)]
+    pub received_messages: Vec<ReceivedMessage>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PubSubPushMessage {
+pub struct ReceivedMessage {
+    pub ack_id: String,
+    pub message: PubSubMessage,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PubSubMessage {
     pub data: String,
-    #[allow(dead_code)]
     pub message_id: String,
 }
 
 /// Decodes base64-encoded Pub/Sub message data into a UTF-8 string.
-pub fn parse_pubsub_push_message(data: &str) -> Result<String, PubSubParseError> {
+pub fn decode_message_data(data: &str) -> Result<String, PubSubParseError> {
     let decoded_bytes = STANDARD
         .decode(data)
         .map_err(|e| PubSubParseError::InvalidBase64(e.to_string()))?;

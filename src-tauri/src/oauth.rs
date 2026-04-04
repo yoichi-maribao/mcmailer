@@ -4,11 +4,12 @@ const GOOGLE_AUTH_ENDPOINT: &str = "https://accounts.google.com/o/oauth2/v2/auth
 pub const GOOGLE_TOKEN_ENDPOINT: &str = "https://oauth2.googleapis.com/token";
 const GMAIL_READONLY_SCOPE: &str = "https://www.googleapis.com/auth/gmail.readonly";
 const EMAIL_SCOPE: &str = "email";
+const PUBSUB_SCOPE: &str = "https://www.googleapis.com/auth/pubsub";
 const GOOGLE_USERINFO_ENDPOINT: &str = "https://www.googleapis.com/oauth2/v2/userinfo";
 
 pub fn build_auth_url(client_id: &str, port: u16) -> String {
     let redirect_uri = format!("http://127.0.0.1:{}/callback", port);
-    let scope = format!("{} {}", GMAIL_READONLY_SCOPE, EMAIL_SCOPE);
+    let scope = format!("{} {} {}", GMAIL_READONLY_SCOPE, EMAIL_SCOPE, PUBSUB_SCOPE);
 
     let mut url = Url::parse(GOOGLE_AUTH_ENDPOINT).unwrap();
     url.query_pairs_mut()

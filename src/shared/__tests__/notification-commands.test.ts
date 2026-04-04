@@ -32,7 +32,7 @@ describe("notification commands", () => {
       // Given: backend returns notification settings
       const mockSettings = {
         enabled: true,
-        pubsubServerUrl: "http://localhost:8090",
+        pubsubSubscription: "projects/my-project/subscriptions/gmail-sub",
         pubsubTopic: "projects/my-project/topics/gmail",
       };
       mockInvoke.mockResolvedValueOnce(mockSettings);
@@ -64,7 +64,7 @@ describe("notification commands", () => {
       // When: calling setNotificationSettings
       await setNotificationSettings({
         enabled: true,
-        pubsubServerUrl: "http://192.168.1.100:8090",
+        pubsubSubscription: "projects/my-project/subscriptions/gmail-push-sub",
         pubsubTopic: "projects/my-project/topics/gmail-push",
       });
 
@@ -72,7 +72,7 @@ describe("notification commands", () => {
       expect(mockInvoke).toHaveBeenCalledWith("set_notification_settings", {
         settings: {
           enabled: true,
-          pubsubServerUrl: "http://192.168.1.100:8090",
+          pubsubSubscription: "projects/my-project/subscriptions/gmail-push-sub",
           pubsubTopic: "projects/my-project/topics/gmail-push",
         },
       });
@@ -85,7 +85,7 @@ describe("notification commands", () => {
       // When: disabling notifications
       await setNotificationSettings({
         enabled: false,
-        pubsubServerUrl: "http://localhost:8090",
+        pubsubSubscription: "projects/my-project/subscriptions/gmail-sub",
         pubsubTopic: "projects/my-project/topics/gmail",
       });
 
@@ -93,7 +93,7 @@ describe("notification commands", () => {
       expect(mockInvoke).toHaveBeenCalledWith("set_notification_settings", {
         settings: {
           enabled: false,
-          pubsubServerUrl: "http://localhost:8090",
+          pubsubSubscription: "projects/my-project/subscriptions/gmail-sub",
           pubsubTopic: "projects/my-project/topics/gmail",
         },
       });
@@ -107,7 +107,7 @@ describe("notification commands", () => {
       await expect(
         setNotificationSettings({
           enabled: true,
-          pubsubServerUrl: "",
+          pubsubSubscription: "",
           pubsubTopic: "",
         }),
       ).rejects.toThrow("Invalid settings");

@@ -7,7 +7,7 @@ use mcmailer_lib::commands::{self, AppState, SETTING_ACTIVE_ACCOUNT_EMAIL};
 use mcmailer_lib::db::Database;
 use mcmailer_lib::gmail_commands;
 use mcmailer_lib::notification_commands;
-use mcmailer_lib::notification_service::NotifiedMessages;
+use mcmailer_lib::notification_service::{NotifiedMessages, EVENT_NAVIGATE_TO_MAIL};
 
 fn main() {
     tauri::Builder::default()
@@ -38,13 +38,13 @@ fn main() {
             app.manage(app_state);
 
             let handle = app.handle().clone();
-            tokio::spawn(mcmailer_lib::sse_client::start(handle));
+            tauri::async_runtime::spawn(mcmailer_lib::pubsub_pull::start(handle));
 
             let handle = app.handle().clone();
-            tokio::spawn(mcmailer_lib::polling::start(handle));
+            tauri::async_runtime::spawn(mcmailer_lib::polling::start(handle));
 
             let handle = app.handle().clone();
-            tokio::spawn(mcmailer_lib::watch::start_renewal_loop(handle));
+            tauri::async_runtime::spawn(mcmailer_lib::watch::start_renewal_loop(handle));
 
             Ok(())
         })
@@ -62,7 +62,9 @@ fn main() {
                 };
                 if let Some(nav) = payload {
                     let _ = window.set_focus();
-                    let _ = app_handle.emit("navigate-to-mail", nav);
+                    if let Err(e) = app_handle.emit(EVENT_NAVIGATE_TO_MAIL, nav) {
+                        println!("[main] Failed to emit navigate-to-mail: {}", e);
+                    }
                 }
             }
         })

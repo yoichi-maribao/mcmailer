@@ -8,23 +8,27 @@ use crate::db::Database;
 #[serde(rename_all = "camelCase")]
 pub struct NotificationSettings {
     pub enabled: bool,
-    pub pubsub_server_url: String,
+    pub pubsub_subscription: String,
     pub pubsub_topic: String,
 }
 
+const SETTING_NOTIFICATIONS_ENABLED: &str = "notifications_enabled";
+const SETTING_PUBSUB_SUBSCRIPTION: &str = "pubsub_subscription";
+const SETTING_PUBSUB_TOPIC: &str = "pubsub_topic";
+
 pub fn load_notification_settings(db: &Database) -> Result<NotificationSettings, String> {
     let enabled = db
-        .get_setting("notifications_enabled")?
+        .get_setting(SETTING_NOTIFICATIONS_ENABLED)?
         .map(|v| v == "true")
         .unwrap_or(false);
-    let pubsub_server_url = db
-        .get_setting("pubsub_server_url")?
+    let pubsub_subscription = db
+        .get_setting(SETTING_PUBSUB_SUBSCRIPTION)?
         .unwrap_or_default();
-    let pubsub_topic = db.get_setting("pubsub_topic")?.unwrap_or_default();
+    let pubsub_topic = db.get_setting(SETTING_PUBSUB_TOPIC)?.unwrap_or_default();
 
     Ok(NotificationSettings {
         enabled,
-        pubsub_server_url,
+        pubsub_subscription,
         pubsub_topic,
     })
 }
@@ -42,15 +46,15 @@ pub async fn set_notification_settings(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     state.db.set_setting(
-        "notifications_enabled",
+        SETTING_NOTIFICATIONS_ENABLED,
         if settings.enabled { "true" } else { "false" },
     )?;
     state
         .db
-        .set_setting("pubsub_server_url", &settings.pubsub_server_url)?;
+        .set_setting(SETTING_PUBSUB_SUBSCRIPTION, &settings.pubsub_subscription)?;
     state
         .db
-        .set_setting("pubsub_topic", &settings.pubsub_topic)?;
+        .set_setting(SETTING_PUBSUB_TOPIC, &settings.pubsub_topic)?;
 
     Ok(())
 }

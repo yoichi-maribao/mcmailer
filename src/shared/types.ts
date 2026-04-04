@@ -28,6 +28,6 @@ export interface AccountInfo {
 
 export interface NotificationSettings {
   enabled: boolean;
-  pubsubServerUrl: string;
+  pubsubSubscription: string;
   pubsubTopic: string;
 }
