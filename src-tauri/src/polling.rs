@@ -27,13 +27,16 @@ pub async fn start(app_handle: tauri::AppHandle) {
         };
 
         for (email, history_id, _expiration) in &watch_states {
-            let _ = crate::notification_service::process_notification(
+            if let Err(e) = crate::notification_service::process_notification(
                 email,
                 history_id,
                 &state,
                 &app_handle,
             )
-            .await;
+            .await
+            {
+                println!("[polling] Failed to process notification for {}: {}", email, e);
+            }
         }
     }
 }

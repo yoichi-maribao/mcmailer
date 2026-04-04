@@ -15,10 +15,10 @@ export function MailScreen() {
     useState<MessageDetailType | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  const handleSelect = async (id: string) => {
+  const handleSelect = useCallback(async (id: string) => {
     const detail = await getMessageDetail(id);
     setSelectedMessage(detail);
-  };
+  }, [getMessageDetail]);
 
   useNewMailNotification({
     onNewMail: useCallback(() => {
@@ -29,7 +29,7 @@ export function MailScreen() {
         .then(() => refresh())
         .then(() => handleSelect(event.messageId))
         .catch(console.error);
-    }, [switchAccount, refresh]),
+    }, [switchAccount, refresh, handleSelect]),
   });
 
   const handleAccountSwitch = useCallback(

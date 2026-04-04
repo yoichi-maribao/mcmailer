@@ -72,7 +72,7 @@ async fn register_and_persist(
     topic: &str,
 ) -> Result<(), String> {
     let access_token =
-        crate::notification_service::get_access_token_for_account(email, state).await?;
+        crate::token::get_access_token_for_account(email, &state.store, &state.db).await?;
     let watch_resp = register_watch(&access_token, topic).await?;
     let exp: i64 = watch_resp.expiration.parse().unwrap_or(0);
     state.db.upsert_watch_state(email, &watch_resp.history_id, exp)
@@ -116,7 +116,9 @@ pub async fn start_renewal_loop(app_handle: tauri::AppHandle) {
         let unregistered = find_unregistered_accounts(&all_emails, &registered_emails);
 
         for email in &unregistered {
-            let _ = register_and_persist(email, &state, &settings.pubsub_topic).await;
+            if let Err(e) = register_and_persist(email, &state, &settings.pubsub_topic).await {
+                println!("[watch] Failed to register watch for {}: {}", email, e);
+            }
         }
 
         // Renewal: re-register watches that are expiring soon
@@ -127,7 +129,9 @@ pub async fn start_renewal_loop(app_handle: tauri::AppHandle) {
 
         for (email, _history_id, expiration) in &watch_states {
             if is_watch_expiring_soon(*expiration, now_ms) {
-                let _ = register_and_persist(email, &state, &settings.pubsub_topic).await;
+                if let Err(e) = register_and_persist(email, &state, &settings.pubsub_topic).await {
+                    println!("[watch] Failed to renew watch for {}: {}", email, e);
+                }
             }
         }
     }

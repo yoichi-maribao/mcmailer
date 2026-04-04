@@ -1,9 +1,16 @@
 use std::collections::HashSet;
 use std::sync::Mutex;
 
-use crate::account::{self, Account};
-use crate::commands::{AppState, SETTING_CLIENT_ID, SETTING_CLIENT_SECRET};
+use crate::commands::AppState;
+use crate::gmail::{self, GmailMessage};
+use crate::history::{self, HistoryListResponse};
 use crate::token;
+
+use tauri::Emitter;
+use tauri_plugin_notification::NotificationExt;
+
+pub const EVENT_NEW_MAIL_RECEIVED: &str = "new-mail-received";
+pub const EVENT_NAVIGATE_TO_MAIL: &str = "navigate-to-mail";
 
 pub struct NotifiedMessages {
     inner: Mutex<HashSet<String>>,
@@ -22,66 +29,76 @@ impl NotifiedMessages {
     }
 }
 
-pub async fn get_access_token_for_account(
-    email: &str,
-    state: &AppState,
-) -> Result<String, String> {
-    let (refresh_token, account_email) = {
-        let store = state
-            .store
-            .lock()
-            .map_err(|e| format!("Lock error: {}", e))?;
-        let acct = store
-            .accounts
-            .iter()
-            .find(|a| a.email == email)
-            .ok_or_else(|| format!("Account not found: {}", email))?;
-
-        let token_data = token::TokenData {
-            access_token: acct.access_token.clone(),
-            refresh_token: acct.refresh_token.clone(),
-            expires_at: acct.expires_at,
-            email: acct.email.clone(),
-        };
-
-        if !token::is_token_expired(&token_data) {
-            return Ok(acct.access_token.clone());
+fn fetch_new_message_ids(
+    history_response: &HistoryListResponse,
+    notified_messages: &NotifiedMessages,
+) -> Vec<String> {
+    let mut new_message_ids = Vec::new();
+    if let Some(entries) = &history_response.history {
+        for entry in entries {
+            if let Some(messages_added) = &entry.messages_added {
+                for added in messages_added {
+                    if notified_messages.try_mark_new(&added.message.id) {
+                        new_message_ids.push(added.message.id.clone());
+                    }
+                }
+            }
         }
+    }
+    new_message_ids
+}
 
-        (acct.refresh_token.clone(), acct.email.clone())
-    };
+fn notify_single_message(
+    msg: &GmailMessage,
+    email: &str,
+    app_handle: &tauri::AppHandle,
+    pending_navigation: &Mutex<Option<serde_json::Value>>,
+) -> Result<(), String> {
+    let headers = msg
+        .payload
+        .as_ref()
+        .map(|p| &p.headers[..])
+        .unwrap_or(&[]);
+    let subject = gmail::parse_message_headers(headers, "Subject")
+        .unwrap_or_else(|| "(No Subject)".to_string());
+    let from = gmail::parse_message_headers(headers, "From")
+        .unwrap_or_else(|| "(Unknown Sender)".to_string());
 
-    let client_id = state
-        .db
-        .get_setting(SETTING_CLIENT_ID)?
-        .ok_or_else(|| "OAuth client ID is not configured".to_string())?;
-    let client_secret = state
-        .db
-        .get_setting(SETTING_CLIENT_SECRET)?
-        .ok_or_else(|| "OAuth client secret is not configured".to_string())?;
+    println!(
+        "[notification_service] Message {}: subject=\"{}\", from=\"{}\"",
+        msg.id, subject, from
+    );
 
-    let refreshed =
-        token::refresh_access_token(&refresh_token, &client_id, &client_secret, &account_email)
-            .await?;
+    if let Err(e) = app_handle
+        .notification()
+        .builder()
+        .title(&subject)
+        .body(&from)
+        .show()
+    {
+        println!("[notification_service] Failed to show notification: {}", e);
+    }
 
-    let access_token = refreshed.access_token.clone();
+    let nav_payload = serde_json::json!({
+        "accountEmail": email,
+        "messageId": &msg.id,
+    });
+    if let Ok(mut pending) = pending_navigation.lock() {
+        *pending = Some(nav_payload);
+    }
 
-    let updated_account = Account {
-        email: refreshed.email,
-        access_token: refreshed.access_token,
-        refresh_token: refreshed.refresh_token,
-        expires_at: refreshed.expires_at,
-    };
+    let payload = serde_json::json!({
+        "accountEmail": email,
+        "messageId": msg.id,
+        "subject": subject,
+        "from": from,
+    });
 
-    state.db.upsert_account(&updated_account)?;
+    if let Err(e) = app_handle.emit(EVENT_NEW_MAIL_RECEIVED, payload) {
+        println!("[notification_service] Failed to emit new-mail-received: {}", e);
+    }
 
-    let mut store = state
-        .store
-        .lock()
-        .map_err(|e| format!("Lock error: {}", e))?;
-    account::add_account(&mut store, updated_account);
-
-    Ok(access_token)
+    Ok(())
 }
 
 pub async fn process_notification(
@@ -90,63 +107,37 @@ pub async fn process_notification(
     state: &AppState,
     app_handle: &tauri::AppHandle,
 ) -> Result<(), String> {
-    use crate::gmail;
-    use crate::history;
-    use tauri::Emitter;
-    use tauri_plugin_notification::NotificationExt;
+    println!(
+        "[notification_service] Processing notification for email={}, history_id={}",
+        email, history_id
+    );
 
-    let access_token = get_access_token_for_account(email, state).await?;
+    let access_token =
+        token::get_access_token_for_account(email, &state.store, &state.db).await?;
 
     let history_response = history::list_history(&access_token, history_id).await?;
 
-    let mut new_message_ids = Vec::new();
-    if let Some(entries) = &history_response.history {
-        for entry in entries {
-            if let Some(messages_added) = &entry.messages_added {
-                for added in messages_added {
-                    if state.notified_messages.try_mark_new(&added.message.id) {
-                        new_message_ids.push(added.message.id.clone());
-                    }
-                }
-            }
-        }
-    }
+    let entry_count = history_response
+        .history
+        .as_ref()
+        .map(|h| h.len())
+        .unwrap_or(0);
+    println!(
+        "[notification_service] History API response: {} entries, history_id={}",
+        entry_count, history_response.history_id
+    );
+
+    let new_message_ids = fetch_new_message_ids(&history_response, &state.notified_messages);
+
+    println!(
+        "[notification_service] New messages detected: {:?}",
+        new_message_ids
+    );
 
     for msg_id in &new_message_ids {
         match gmail::get_message(&access_token, msg_id).await {
             Ok(msg) => {
-                let headers = msg
-                    .payload
-                    .as_ref()
-                    .map(|p| &p.headers[..])
-                    .unwrap_or(&[]);
-                let subject = gmail::parse_message_headers(headers, "Subject").unwrap_or_default();
-                let from = gmail::parse_message_headers(headers, "From").unwrap_or_default();
-
-                let _ = app_handle
-                    .notification()
-                    .builder()
-                    .title(&subject)
-                    .body(&from)
-                    .show();
-
-                // Store navigation target for when user focuses window after seeing notification
-                let nav_payload = serde_json::json!({
-                    "accountEmail": email,
-                    "messageId": &msg.id,
-                });
-                if let Ok(mut pending) = state.pending_navigation.lock() {
-                    *pending = Some(nav_payload);
-                }
-
-                let payload = serde_json::json!({
-                    "accountEmail": email,
-                    "messageId": msg.id,
-                    "subject": subject,
-                    "from": from,
-                });
-
-                let _ = app_handle.emit("new-mail-received", payload);
+                notify_single_message(&msg, email, app_handle, &state.pending_navigation)?;
             }
             Err(e) => {
                 println!(
@@ -157,9 +148,15 @@ pub async fn process_notification(
         }
     }
 
-    let _ = state
+    if let Err(e) = state
         .db
-        .update_history_id(email, &history_response.history_id);
+        .update_history_id(email, &history_response.history_id)
+    {
+        println!(
+            "[notification_service] Failed to update history_id for {}: {}",
+            email, e
+        );
+    }
 
     Ok(())
 }
