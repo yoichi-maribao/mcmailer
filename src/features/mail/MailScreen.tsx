@@ -63,6 +63,7 @@ export function MailScreen() {
               messages={messages}
               onSelect={handleSelect}
               onLoadMore={loadMore}
+              onRefresh={refresh}
               hasMore={hasMore}
               isLoading={isLoading}
               isLoadingMore={isLoadingMore}

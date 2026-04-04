@@ -66,9 +66,18 @@ export function useMails(): MailsState {
   }, [fetchMessages, isLoadingMore]);
 
   const refresh = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     setMessages([]);
     nextPageTokenRef.current = null;
-    await fetchMessages(null, false);
+    try {
+      await fetchMessages(null, false);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
   }, [fetchMessages]);
 
   const getMessageDetail = useCallback(async (id: string) => {

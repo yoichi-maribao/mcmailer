@@ -55,6 +55,7 @@ vi.mock("../useMails", () => ({
     messages: mockMessages,
     hasMore: true,
     isLoading: false,
+    isLoadingMore: false,
     error: null,
     loadMore: mockLoadMore,
     refresh: mockRefresh,

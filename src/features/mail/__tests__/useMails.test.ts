@@ -206,4 +206,144 @@ describe("useMails", () => {
     expect(result.current.messages).toHaveLength(1);
     expect(result.current.messages[0].id).toBe("msg3");
   });
+
+  it("should set isLoading to true during refresh", async () => {
+    // Given: initial load completes
+    mockListMessages.mockResolvedValueOnce({
+      messages: [{ id: "msg1", subject: "Test", from: "a@b.com", snippet: "", date: "", isUnread: false }],
+      nextPageToken: null,
+    });
+    const { result } = renderHook(() => useMails());
+    await act(async () => {});
+    expect(result.current.isLoading).toBe(false);
+
+    // When: refresh is called but fetch is still pending
+    let resolveRefreshFetch: (value: unknown) => void;
+    mockListMessages.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRefreshFetch = resolve;
+      }),
+    );
+
+    let refreshPromise: Promise<void>;
+    act(() => {
+      refreshPromise = result.current.refresh();
+    });
+
+    // Then: isLoading is true while fetch is in progress
+    expect(result.current.isLoading).toBe(true);
+
+    // Cleanup: resolve the pending fetch
+    await act(async () => {
+      resolveRefreshFetch!({
+        messages: [{ id: "msg2", subject: "New", from: "x@y.com", snippet: "", date: "", isUnread: false }],
+        nextPageToken: null,
+      });
+      await refreshPromise!;
+    });
+  });
+
+  it("should set isLoading to false after refresh completes", async () => {
+    // Given: initial load completes
+    mockListMessages.mockResolvedValueOnce({
+      messages: [{ id: "msg1", subject: "Test", from: "a@b.com", snippet: "", date: "", isUnread: false }],
+      nextPageToken: null,
+    });
+    const { result } = renderHook(() => useMails());
+    await act(async () => {});
+
+    // When: refresh completes successfully
+    mockListMessages.mockResolvedValueOnce({
+      messages: [{ id: "msg2", subject: "New", from: "x@y.com", snippet: "", date: "", isUnread: false }],
+      nextPageToken: null,
+    });
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    // Then: isLoading is false
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it("should set error when refresh fails", async () => {
+    // Given: initial load completes
+    mockListMessages.mockResolvedValueOnce({
+      messages: [{ id: "msg1", subject: "Test", from: "a@b.com", snippet: "", date: "", isUnread: false }],
+      nextPageToken: null,
+    });
+    const { result } = renderHook(() => useMails());
+    await act(async () => {});
+    expect(result.current.error).toBeNull();
+
+    // When: refresh fails with an error
+    mockListMessages.mockRejectedValueOnce(new Error("Token expired"));
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    // Then: error state is set and isLoading is false
+    expect(result.current.error).toBe("Token expired");
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.messages).toEqual([]);
+  });
+
+  it("should clear previous error when refresh is called again", async () => {
+    // Given: initial load fails
+    mockListMessages.mockRejectedValueOnce(new Error("Network error"));
+    const { result } = renderHook(() => useMails());
+    await act(async () => {});
+    expect(result.current.error).toBe("Network error");
+
+    // When: refresh is called and succeeds
+    mockListMessages.mockResolvedValueOnce({
+      messages: [{ id: "msg1", subject: "Recovered", from: "a@b.com", snippet: "", date: "", isUnread: false }],
+      nextPageToken: null,
+    });
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    // Then: error is cleared
+    expect(result.current.error).toBeNull();
+    expect(result.current.messages).toHaveLength(1);
+  });
+
+  it("should set isLoading to false even when refresh fails", async () => {
+    // Given: initial load completes
+    mockListMessages.mockResolvedValueOnce({
+      messages: [{ id: "msg1", subject: "Test", from: "a@b.com", snippet: "", date: "", isUnread: false }],
+      nextPageToken: null,
+    });
+    const { result } = renderHook(() => useMails());
+    await act(async () => {});
+
+    // When: refresh fails
+    mockListMessages.mockRejectedValueOnce(new Error("Server error"));
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    // Then: isLoading is false (finally block executed)
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it("should handle non-Error thrown values during refresh", async () => {
+    // Given: initial load completes
+    mockListMessages.mockResolvedValueOnce({
+      messages: [{ id: "msg1", subject: "Test", from: "a@b.com", snippet: "", date: "", isUnread: false }],
+      nextPageToken: null,
+    });
+    const { result } = renderHook(() => useMails());
+    await act(async () => {});
+
+    // When: refresh fails with a string error (not Error instance)
+    mockListMessages.mockRejectedValueOnce("API unavailable");
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    // Then: error is converted to string
+    expect(result.current.error).toBe("API unavailable");
+    expect(result.current.isLoading).toBe(false);
+  });
 });
