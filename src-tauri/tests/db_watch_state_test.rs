@@ -162,6 +162,36 @@ mod tests {
         assert!(emails.contains(&"carol@gmail.com"));
     }
 
+    // --- update_history_id ---
+
+    #[test]
+    fn should_update_only_history_id_without_changing_watch_expiration() {
+        // Given: a database with an existing watch state
+        let db = open_in_memory_db();
+        db.upsert_watch_state("user@gmail.com", "100", 1700000000)
+            .unwrap();
+
+        // When: updating only the history_id
+        db.update_history_id("user@gmail.com", "999").unwrap();
+
+        // Then: history_id is updated but watch_expiration is preserved
+        let state = db.get_watch_state("user@gmail.com").unwrap().unwrap();
+        assert_eq!(state.0, "999");
+        assert_eq!(state.1, 1700000000);
+    }
+
+    #[test]
+    fn should_not_fail_when_updating_history_id_for_nonexistent_email() {
+        // Given: an empty database
+        let db = open_in_memory_db();
+
+        // When: updating history_id for a non-existent email
+        let result = db.update_history_id("nobody@gmail.com", "123");
+
+        // Then: succeeds without error (UPDATE affects zero rows)
+        assert!(result.is_ok());
+    }
+
     // --- edge cases ---
 
     #[test]

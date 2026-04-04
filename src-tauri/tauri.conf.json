@@ -8,6 +8,11 @@
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
+  "plugins": {
+    "notification": {
+      "enabled": true
+    }
+  },
   "app": {
     "windows": [
       {

@@ -73,6 +73,10 @@ vi.mock("../../accounts/useAccounts", () => ({
   }),
 }));
 
+vi.mock("../useNewMailNotification", () => ({
+  useNewMailNotification: vi.fn(),
+}));
+
 describe("MailScreen", () => {
   beforeEach(() => {
     mockLoadMore.mockReset();

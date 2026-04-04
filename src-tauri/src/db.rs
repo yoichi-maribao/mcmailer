@@ -20,6 +20,13 @@ const CREATE_SETTINGS_TABLE: &str = "\
         value TEXT NOT NULL\
     )";
 
+const CREATE_WATCH_STATE_TABLE: &str = "\
+    CREATE TABLE IF NOT EXISTS watch_state (\
+        email TEXT PRIMARY KEY,\
+        history_id TEXT NOT NULL,\
+        watch_expiration INTEGER NOT NULL\
+    )";
+
 pub struct Database {
     conn: Mutex<Connection>,
 }
@@ -41,6 +48,9 @@ impl Database {
 
         conn.execute(CREATE_SETTINGS_TABLE, [])
             .map_err(|e| format!("Failed to create settings table: {}", e))?;
+
+        conn.execute(CREATE_WATCH_STATE_TABLE, [])
+            .map_err(|e| format!("Failed to create watch_state table: {}", e))?;
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -149,5 +159,90 @@ impl Database {
             .map_err(|e| format!("Failed to delete setting: {}", e))?;
 
         Ok(())
+    }
+
+    pub fn upsert_watch_state(
+        &self,
+        email: &str,
+        history_id: &str,
+        watch_expiration: i64,
+    ) -> Result<(), String> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| format!("Lock error: {}", e))?;
+
+        conn.execute(
+            "INSERT OR REPLACE INTO watch_state (email, history_id, watch_expiration) \
+             VALUES (?1, ?2, ?3)",
+            (email, history_id, watch_expiration),
+        )
+        .map_err(|e| format!("Failed to upsert watch state: {}", e))?;
+
+        Ok(())
+    }
+
+    pub fn update_history_id(&self, email: &str, history_id: &str) -> Result<(), String> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| format!("Lock error: {}", e))?;
+
+        conn.execute(
+            "UPDATE watch_state SET history_id = ?2 WHERE email = ?1",
+            [email, history_id],
+        )
+        .map_err(|e| format!("Failed to update history_id: {}", e))?;
+
+        Ok(())
+    }
+
+    pub fn get_watch_state(&self, email: &str) -> Result<Option<(String, i64)>, String> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| format!("Lock error: {}", e))?;
+
+        let mut stmt = conn
+            .prepare("SELECT history_id, watch_expiration FROM watch_state WHERE email = ?1")
+            .map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+        let result = stmt
+            .query_row([email], |row| Ok((row.get(0)?, row.get(1)?)))
+            .optional()
+            .map_err(|e| format!("Failed to get watch state: {}", e))?;
+
+        Ok(result)
+    }
+
+    pub fn delete_watch_state(&self, email: &str) -> Result<(), String> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| format!("Lock error: {}", e))?;
+
+        conn.execute("DELETE FROM watch_state WHERE email = ?1", [email])
+            .map_err(|e| format!("Failed to delete watch state: {}", e))?;
+
+        Ok(())
+    }
+
+    pub fn load_all_watch_states(&self) -> Result<Vec<(String, String, i64)>, String> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| format!("Lock error: {}", e))?;
+
+        let mut stmt = conn
+            .prepare("SELECT email, history_id, watch_expiration FROM watch_state")
+            .map_err(|e| format!("Failed to prepare statement: {}", e))?;
+
+        let states = stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+            .map_err(|e| format!("Failed to query watch states: {}", e))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| format!("Failed to read watch state row: {}", e))?;
+
+        Ok(states)
     }
 }

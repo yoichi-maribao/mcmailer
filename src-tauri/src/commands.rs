@@ -4,6 +4,7 @@ use tauri::State;
 
 use crate::account::{self, Account, AccountStore};
 use crate::db::Database;
+use crate::notification_service::NotifiedMessages;
 use crate::oauth;
 use crate::types::AccountInfo;
 
@@ -14,6 +15,8 @@ pub(crate) const SETTING_CLIENT_SECRET: &str = "client_secret";
 pub struct AppState {
     pub store: Mutex<AccountStore>,
     pub db: Database,
+    pub notified_messages: NotifiedMessages,
+    pub pending_navigation: Mutex<Option<serde_json::Value>>,
 }
 
 #[tauri::command]

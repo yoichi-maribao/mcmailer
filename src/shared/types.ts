@@ -25,3 +25,9 @@ export interface AccountInfo {
   email: string;
   isActive: boolean;
 }
+
+export interface NotificationSettings {
+  enabled: boolean;
+  pubsubServerUrl: string;
+  pubsubTopic: string;
+}
