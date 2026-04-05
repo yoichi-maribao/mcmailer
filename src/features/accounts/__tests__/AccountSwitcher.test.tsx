@@ -14,10 +14,12 @@ describe("AccountSwitcher", () => {
   };
   const mockOnSwitchAccount = vi.fn();
   const mockOnAddAccount = vi.fn();
+  const mockOnLogout = vi.fn();
 
   beforeEach(() => {
     mockOnSwitchAccount.mockReset();
     mockOnAddAccount.mockReset();
+    mockOnLogout.mockReset();
   });
 
   // --- Dropdown trigger ---
@@ -30,6 +32,7 @@ describe("AccountSwitcher", () => {
         activeAccount={activeAccount}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
 
@@ -50,6 +53,7 @@ describe("AccountSwitcher", () => {
         activeAccount={activeAccount}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
 
@@ -68,6 +72,7 @@ describe("AccountSwitcher", () => {
         activeAccount={activeAccount}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
 
@@ -91,6 +96,7 @@ describe("AccountSwitcher", () => {
         activeAccount={activeAccount}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
     fireEvent.click(
@@ -114,6 +120,7 @@ describe("AccountSwitcher", () => {
         activeAccount={activeAccount}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
     fireEvent.click(
@@ -135,6 +142,7 @@ describe("AccountSwitcher", () => {
         activeAccount={activeAccount}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
     fireEvent.click(
@@ -158,6 +166,7 @@ describe("AccountSwitcher", () => {
         activeAccount={activeAccount}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
     fireEvent.click(
@@ -181,6 +190,7 @@ describe("AccountSwitcher", () => {
         activeAccount={activeAccount}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
     fireEvent.click(
@@ -202,6 +212,7 @@ describe("AccountSwitcher", () => {
         activeAccount={activeAccount}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
     fireEvent.click(
@@ -215,5 +226,100 @@ describe("AccountSwitcher", () => {
 
     // Then: onAddAccount is called
     expect(mockOnAddAccount).toHaveBeenCalledTimes(1);
+  });
+
+  // --- Logout button ---
+
+  it("should show logout button in dropdown with red text", () => {
+    // Given: dropdown is open
+    render(
+      <AccountSwitcher
+        accounts={accounts}
+        activeAccount={activeAccount}
+        onSwitchAccount={mockOnSwitchAccount}
+        onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /アカウント|account/i }),
+    );
+
+    // Then: logout button is visible with red color
+    const logoutButton = screen.getByRole("button", { name: /ログアウト/i });
+    expect(logoutButton).toBeInTheDocument();
+    expect(logoutButton).toHaveStyle({ color: "#d32f2f" });
+  });
+
+  it("should call onLogout when confirm is accepted", () => {
+    // Given: dropdown is open, confirm returns true
+    vi.spyOn(window, "confirm").mockReturnValueOnce(true);
+    render(
+      <AccountSwitcher
+        accounts={accounts}
+        activeAccount={activeAccount}
+        onSwitchAccount={mockOnSwitchAccount}
+        onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /アカウント|account/i }),
+    );
+
+    // When: clicking logout button
+    fireEvent.click(screen.getByRole("button", { name: /ログアウト/i }));
+
+    // Then: confirm dialog was shown and onLogout was called
+    expect(window.confirm).toHaveBeenCalledWith(
+      "user1@gmail.com からログアウトしますか？",
+    );
+    expect(mockOnLogout).toHaveBeenCalledTimes(1);
+  });
+
+  it("should not call onLogout when confirm is cancelled", () => {
+    // Given: dropdown is open, confirm returns false
+    vi.spyOn(window, "confirm").mockReturnValueOnce(false);
+    render(
+      <AccountSwitcher
+        accounts={accounts}
+        activeAccount={activeAccount}
+        onSwitchAccount={mockOnSwitchAccount}
+        onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /アカウント|account/i }),
+    );
+
+    // When: clicking logout button but cancelling
+    fireEvent.click(screen.getByRole("button", { name: /ログアウト/i }));
+
+    // Then: onLogout was not called
+    expect(mockOnLogout).not.toHaveBeenCalled();
+  });
+
+  it("should close dropdown after logout confirmation", () => {
+    // Given: dropdown is open, confirm returns true
+    vi.spyOn(window, "confirm").mockReturnValueOnce(true);
+    render(
+      <AccountSwitcher
+        accounts={accounts}
+        activeAccount={activeAccount}
+        onSwitchAccount={mockOnSwitchAccount}
+        onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /アカウント|account/i }),
+    );
+
+    // When: clicking logout button and confirming
+    fireEvent.click(screen.getByRole("button", { name: /ログアウト/i }));
+
+    // Then: dropdown is closed
+    expect(screen.queryByRole("button", { name: /ログアウト/i })).not.toBeInTheDocument();
   });
 });

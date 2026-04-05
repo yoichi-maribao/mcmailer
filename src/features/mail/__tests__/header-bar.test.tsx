@@ -16,11 +16,13 @@ describe("HeaderBar", () => {
   const mockOnToggleSidebar = vi.fn();
   const mockOnSwitchAccount = vi.fn();
   const mockOnAddAccount = vi.fn();
+  const mockOnLogout = vi.fn();
 
   beforeEach(() => {
     mockOnToggleSidebar.mockReset();
     mockOnSwitchAccount.mockReset();
     mockOnAddAccount.mockReset();
+    mockOnLogout.mockReset();
   });
 
   // --- Toggle button ---
@@ -34,6 +36,7 @@ describe("HeaderBar", () => {
         onToggleSidebar={mockOnToggleSidebar}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
 
@@ -53,6 +56,7 @@ describe("HeaderBar", () => {
         onToggleSidebar={mockOnToggleSidebar}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
 
@@ -76,6 +80,7 @@ describe("HeaderBar", () => {
         onToggleSidebar={mockOnToggleSidebar}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
 
@@ -97,6 +102,7 @@ describe("HeaderBar", () => {
         onToggleSidebar={mockOnToggleSidebar}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
 
@@ -113,6 +119,7 @@ describe("HeaderBar", () => {
         onToggleSidebar={mockOnToggleSidebar}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
 
@@ -136,6 +143,7 @@ describe("HeaderBar", () => {
         onToggleSidebar={mockOnToggleSidebar}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
     const accountButton = screen.getByRole("button", {
@@ -161,6 +169,7 @@ describe("HeaderBar", () => {
         onToggleSidebar={mockOnToggleSidebar}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
     fireEvent.click(
@@ -183,6 +192,7 @@ describe("HeaderBar", () => {
         onToggleSidebar={mockOnToggleSidebar}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
     fireEvent.click(
@@ -207,6 +217,7 @@ describe("HeaderBar", () => {
         onToggleSidebar={mockOnToggleSidebar}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
     fireEvent.click(
@@ -231,6 +242,7 @@ describe("HeaderBar", () => {
         onToggleSidebar={mockOnToggleSidebar}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
     fireEvent.click(
@@ -253,6 +265,7 @@ describe("HeaderBar", () => {
         onToggleSidebar={mockOnToggleSidebar}
         onSwitchAccount={mockOnSwitchAccount}
         onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
       />,
     );
     fireEvent.click(
@@ -266,5 +279,29 @@ describe("HeaderBar", () => {
 
     // Then: onAddAccount is called
     expect(mockOnAddAccount).toHaveBeenCalledTimes(1);
+  });
+
+  // --- Logout button in dropdown ---
+
+  it("should show logout button in dropdown", () => {
+    // Given: HeaderBar is rendered and dropdown is open
+    render(
+      <HeaderBar
+        accounts={accounts}
+        activeAccount={activeAccount}
+        onToggleSidebar={mockOnToggleSidebar}
+        onSwitchAccount={mockOnSwitchAccount}
+        onAddAccount={mockOnAddAccount}
+        onLogout={mockOnLogout}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /アカウント|account/i }),
+    );
+
+    // Then: logout button is visible
+    expect(
+      screen.getByRole("button", { name: /ログアウト/i }),
+    ).toBeInTheDocument();
   });
 });

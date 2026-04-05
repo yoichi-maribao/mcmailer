@@ -6,6 +6,7 @@ interface AccountSwitcherProps {
   activeAccount: AccountInfo;
   onSwitchAccount: (email: string) => void;
   onAddAccount: () => void;
+  onLogout: () => void;
 }
 
 export function AccountSwitcher({
@@ -13,6 +14,7 @@ export function AccountSwitcher({
   activeAccount,
   onSwitchAccount,
   onAddAccount,
+  onLogout,
 }: AccountSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -80,6 +82,27 @@ export function AccountSwitcher({
             }}
           >
             アカウントを追加
+          </button>
+          <button
+            onClick={() => {
+              if (window.confirm(`${activeAccount.email} からログアウトしますか？`)) {
+                onLogout();
+                setIsOpen(false);
+              }
+            }}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "8px 12px",
+              border: "none",
+              borderTop: "1px solid #ccc",
+              background: "none",
+              cursor: "pointer",
+              textAlign: "left",
+              color: "#d32f2f",
+            }}
+          >
+            ログアウト
           </button>
         </div>
       )}

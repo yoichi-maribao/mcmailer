@@ -7,7 +7,7 @@ import { useAccounts } from "../accounts/useAccounts";
 import type { MessageDetail as MessageDetailType } from "../../shared/types";
 
 export function MailScreen() {
-  const { accounts, activeAccount, switchAccount, addAccount } = useAccounts();
+  const { accounts, activeAccount, switchAccount, addAccount, removeCurrentAccount } = useAccounts();
   const { messages, hasMore, isLoading, isLoadingMore, loadMore, refresh, getMessageDetail } =
     useMails();
   const [selectedMessage, setSelectedMessage] =
@@ -29,6 +29,19 @@ export function MailScreen() {
     },
     [switchAccount, refresh],
   );
+
+  const handleLogout = useCallback(() => {
+    removeCurrentAccount()
+      .then(({ remaining }) => {
+        if (remaining.length === 0) {
+          location.reload();
+        } else {
+          setSelectedMessage(null);
+          refresh().catch(console.error);
+        }
+      })
+      .catch(console.error);
+  }, [removeCurrentAccount, refresh]);
 
   const handleToggleSidebar = useCallback(() => {
     setIsSidebarOpen((prev) => !prev);
@@ -55,6 +68,7 @@ export function MailScreen() {
         onToggleSidebar={handleToggleSidebar}
         onSwitchAccount={handleAccountSwitch}
         onAddAccount={addAccount}
+        onLogout={handleLogout}
       />
       <main style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         {isSidebarOpen && (

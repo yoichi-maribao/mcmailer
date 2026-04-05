@@ -49,6 +49,7 @@ const mockRefresh = vi.fn();
 const mockGetMessageDetail = vi.fn();
 const mockSwitchAccount = vi.fn();
 const mockAddAccount = vi.fn();
+const mockRemoveCurrentAccount = vi.fn();
 
 vi.mock("../useMails", () => ({
   useMails: () => ({
@@ -70,6 +71,7 @@ vi.mock("../../accounts/useAccounts", () => ({
     error: null,
     switchAccount: mockSwitchAccount,
     addAccount: mockAddAccount,
+    removeCurrentAccount: mockRemoveCurrentAccount,
   }),
 }));
 
@@ -80,9 +82,11 @@ describe("MailScreen", () => {
     mockGetMessageDetail.mockReset();
     mockSwitchAccount.mockReset();
     mockAddAccount.mockReset();
+    mockRemoveCurrentAccount.mockReset();
     mockGetMessageDetail.mockResolvedValue(mockMessageDetail);
     mockSwitchAccount.mockResolvedValue(undefined);
     mockRefresh.mockResolvedValue(undefined);
+    mockRemoveCurrentAccount.mockResolvedValue({ remaining: [mockAccounts[1]] });
   });
 
   // --- 2-pane layout ---
@@ -266,5 +270,50 @@ describe("MailScreen", () => {
 
     // Then: mail list remains visible
     expect(screen.getByText("First Email")).toBeInTheDocument();
+  });
+
+  // --- Logout ---
+
+  it("should call removeCurrentAccount and refresh when logging out with remaining accounts", async () => {
+    // Given: MailScreen is rendered, confirm returns true
+    vi.spyOn(window, "confirm").mockReturnValueOnce(true);
+    render(<MailScreen />);
+
+    // When: opening account dropdown and clicking logout
+    fireEvent.click(
+      screen.getByRole("button", { name: /アカウント|account/i }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /ログアウト/i }));
+
+    // Then: removeCurrentAccount is called, then refresh
+    await waitFor(() => {
+      expect(mockRemoveCurrentAccount).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(mockRefresh).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("should reload page when logging out last account", async () => {
+    // Given: MailScreen is rendered, removeCurrentAccount returns empty
+    vi.spyOn(window, "confirm").mockReturnValueOnce(true);
+    mockRemoveCurrentAccount.mockResolvedValueOnce({ remaining: [] });
+    const reloadMock = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { reload: reloadMock },
+      writable: true,
+    });
+    render(<MailScreen />);
+
+    // When: opening account dropdown and clicking logout
+    fireEvent.click(
+      screen.getByRole("button", { name: /アカウント|account/i }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /ログアウト/i }));
+
+    // Then: page is reloaded
+    await waitFor(() => {
+      expect(reloadMock).toHaveBeenCalledTimes(1);
+    });
   });
 });
