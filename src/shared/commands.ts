@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { MessageListResponse, MessageDetail, AccountInfo } from "./types";
+import type { MessageListResponse, MessageDetail, AccountInfo, NotificationSettings } from "./types";
 
 export function isTauriEnvironment(): boolean {
   return (
@@ -55,4 +55,12 @@ export function setOAuthCredentials(
   clientSecret: string,
 ): Promise<void> {
   return safeInvoke("set_oauth_credentials", { clientId, clientSecret });
+}
+
+export function getNotificationSettings(): Promise<NotificationSettings> {
+  return safeInvoke("get_notification_settings");
+}
+
+export function setNotificationSettings(settings: NotificationSettings): Promise<void> {
+  return safeInvoke("set_notification_settings", { settings });
 }

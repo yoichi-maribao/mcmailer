@@ -1,4 +1,4 @@
-use mcmailer_lib::watch::{WatchResponse, is_watch_expiring_soon};
+use mcmailer_lib::watch::{WatchResponse, find_unregistered_accounts, is_watch_expiring_soon};
 
 #[cfg(test)]
 mod tests {
@@ -92,6 +92,74 @@ mod tests {
 
         // Then: returns true (at threshold boundary, should renew)
         assert!(result);
+    }
+
+    // --- find_unregistered_accounts ---
+
+    #[test]
+    fn should_return_unregistered_accounts_on_cold_start() {
+        // Given: 3 accounts exist but no watch_state entries (cold start)
+        let all_emails = vec![
+            "a@example.com".to_string(),
+            "b@example.com".to_string(),
+            "c@example.com".to_string(),
+        ];
+        let registered_emails: Vec<String> = vec![];
+
+        // When: finding unregistered accounts
+        let result = find_unregistered_accounts(&all_emails, &registered_emails);
+
+        // Then: all accounts are returned
+        assert_eq!(result.len(), 3);
+        assert!(result.contains(&"a@example.com".to_string()));
+        assert!(result.contains(&"b@example.com".to_string()));
+        assert!(result.contains(&"c@example.com".to_string()));
+    }
+
+    #[test]
+    fn should_return_only_new_accounts_when_some_already_registered() {
+        // Given: 3 accounts exist, 2 already have watch_state entries
+        let all_emails = vec![
+            "a@example.com".to_string(),
+            "b@example.com".to_string(),
+            "c@example.com".to_string(),
+        ];
+        let registered_emails = vec![
+            "a@example.com".to_string(),
+            "c@example.com".to_string(),
+        ];
+
+        // When: finding unregistered accounts
+        let result = find_unregistered_accounts(&all_emails, &registered_emails);
+
+        // Then: only the unregistered account is returned
+        assert_eq!(result, vec!["b@example.com".to_string()]);
+    }
+
+    #[test]
+    fn should_return_empty_when_all_accounts_registered() {
+        // Given: all accounts already have watch_state entries
+        let all_emails = vec!["a@example.com".to_string()];
+        let registered_emails = vec!["a@example.com".to_string()];
+
+        // When: finding unregistered accounts
+        let result = find_unregistered_accounts(&all_emails, &registered_emails);
+
+        // Then: no accounts need registration
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn should_return_empty_when_no_accounts_exist() {
+        // Given: no accounts exist
+        let all_emails: Vec<String> = vec![];
+        let registered_emails: Vec<String> = vec![];
+
+        // When: finding unregistered accounts
+        let result = find_unregistered_accounts(&all_emails, &registered_emails);
+
+        // Then: empty result
+        assert!(result.is_empty());
     }
 
     #[test]

@@ -4,6 +4,7 @@ import { MailDetail } from "./MailDetail";
 import { HeaderBar } from "./components/header-bar";
 import { useMails } from "./useMails";
 import { useAccounts } from "../accounts/useAccounts";
+import { useNewMailNotification } from "./useNewMailNotification";
 import type { MessageDetail as MessageDetailType } from "../../shared/types";
 
 export function MailScreen() {
@@ -14,10 +15,22 @@ export function MailScreen() {
     useState<MessageDetailType | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  const handleSelect = async (id: string) => {
+  const handleSelect = useCallback(async (id: string) => {
     const detail = await getMessageDetail(id);
     setSelectedMessage(detail);
-  };
+  }, [getMessageDetail]);
+
+  useNewMailNotification({
+    onNewMail: useCallback(() => {
+      refresh();
+    }, [refresh]),
+    onNavigateToMail: useCallback((event) => {
+      switchAccount(event.accountEmail)
+        .then(() => refresh())
+        .then(() => handleSelect(event.messageId))
+        .catch(console.error);
+    }, [switchAccount, refresh, handleSelect]),
+  });
 
   const handleAccountSwitch = useCallback(
     (email: string) => {

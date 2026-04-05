@@ -1,14 +1,17 @@
 use std::sync::Mutex;
 
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 use mcmailer_lib::account::AccountStore;
 use mcmailer_lib::commands::{self, AppState, SETTING_ACTIVE_ACCOUNT_EMAIL};
 use mcmailer_lib::db::Database;
 use mcmailer_lib::gmail_commands;
+use mcmailer_lib::notification_commands;
+use mcmailer_lib::notification_service::{NotifiedMessages, EVENT_NAVIGATE_TO_MAIL};
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&app_data_dir)?;
@@ -28,10 +31,42 @@ fn main() {
                     active_account_email,
                 }),
                 db,
+                notified_messages: NotifiedMessages::new(),
+                pending_navigation: Mutex::new(None),
             };
 
             app.manage(app_state);
+
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(mcmailer_lib::pubsub_pull::start(handle));
+
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(mcmailer_lib::polling::start(handle));
+
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(mcmailer_lib::watch::start_renewal_loop(handle));
+
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            // When window gains focus, emit navigate-to-mail for pending notification
+            if let tauri::WindowEvent::Focused(true) = event {
+                let app_handle = window.app_handle();
+                let state = app_handle.state::<AppState>();
+                let payload = {
+                    let mut pending = match state.pending_navigation.lock() {
+                        Ok(p) => p,
+                        Err(_) => return,
+                    };
+                    pending.take()
+                };
+                if let Some(nav) = payload {
+                    let _ = window.set_focus();
+                    if let Err(e) = app_handle.emit(EVENT_NAVIGATE_TO_MAIL, nav) {
+                        println!("[main] Failed to emit navigate-to-mail: {}", e);
+                    }
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             commands::start_oauth,
@@ -43,6 +78,8 @@ fn main() {
             commands::set_oauth_credentials,
             gmail_commands::list_messages,
             gmail_commands::get_message,
+            notification_commands::get_notification_settings,
+            notification_commands::set_notification_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

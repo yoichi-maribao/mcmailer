@@ -2,6 +2,7 @@
 name = "mcmailer"
 version = "0.1.0"
 edition = "2021"
+default-run = "mcmailer"
 
 [lib]
 name = "mcmailer_lib"
@@ -15,6 +16,7 @@ path = "src/main.rs"
 tauri = { version = "2", features = [
   "devtools"
 ] }
+tauri-plugin-notification = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }

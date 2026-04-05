@@ -231,6 +231,40 @@ describe("useNewMailNotification", () => {
     expect(onNewMail.mock.calls[1][0].accountEmail).toBe("bob@gmail.com");
   });
 
+  // --- Listener cleanup on early unmount (race condition) ---
+
+  it("should clean up listeners even if unmount happens before listen resolves", async () => {
+    // Given: listen returns promises that haven't resolved yet
+    const unlistenNewMail2 = vi.fn();
+    const unlistenNavigate2 = vi.fn();
+    let resolveNewMail!: (fn: () => void) => void;
+    let resolveNavigate!: (fn: () => void) => void;
+
+    mockListen.mockReset();
+    mockListen
+      .mockReturnValueOnce(new Promise<() => void>((resolve) => { resolveNewMail = resolve; }))
+      .mockReturnValueOnce(new Promise<() => void>((resolve) => { resolveNavigate = resolve; }));
+
+    const { unmount } = renderHook(() =>
+      useNewMailNotification({
+        onNewMail: vi.fn(),
+        onNavigateToMail: vi.fn(),
+      }),
+    );
+
+    // When: unmount happens before listen promises resolve
+    unmount();
+
+    // Then: when promises resolve, unlisten functions are called immediately
+    await act(async () => {
+      resolveNewMail(unlistenNewMail2);
+      resolveNavigate(unlistenNavigate2);
+    });
+
+    expect(unlistenNewMail2).toHaveBeenCalled();
+    expect(unlistenNavigate2).toHaveBeenCalled();
+  });
+
   // --- Callback stability ---
 
   it("should not re-register listeners when callbacks change via re-render", async () => {
