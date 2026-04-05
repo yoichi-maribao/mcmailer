@@ -277,6 +277,22 @@ mod tests {
         assert!(message.label_ids.contains(&"UNREAD".to_string()));
     }
 
+    #[test]
+    fn should_deserialize_response_without_messages_field() {
+        // Given: a Gmail API response where the inbox is empty
+        // (Gmail API omits the "messages" field entirely when there are no messages)
+        let json = r#"{
+            "resultSizeEstimate": 0
+        }"#;
+
+        // When: deserializing
+        let response: GmailMessageListResponse = serde_json::from_str(json).unwrap();
+
+        // Then: messages defaults to empty vec, no parse error
+        assert!(response.messages.is_empty());
+        assert_eq!(response.next_page_token, None);
+    }
+
     // --- Helper ---
 
     fn base64_url_encode(input: &str) -> String {

@@ -6,6 +6,7 @@ interface MailListProps {
   messages: MessageSummary[];
   onSelect: (id: string) => void;
   onLoadMore: () => void;
+  onRefresh: () => void;
   hasMore: boolean;
   isLoading: boolean;
   isLoadingMore: boolean;
@@ -16,6 +17,7 @@ export function MailList({
   messages,
   onSelect,
   onLoadMore,
+  onRefresh,
   hasMore,
   isLoading,
   isLoadingMore,
@@ -42,6 +44,22 @@ export function MailList({
 
   return (
     <div style={{ overflowY: "auto", height: "100%" }}>
+      <div style={{ padding: "8px", textAlign: "right" }}>
+        <button
+          aria-label="リロード"
+          onClick={onRefresh}
+          style={{
+            background: "none",
+            border: "1px solid #ccc",
+            borderRadius: "4px",
+            cursor: "pointer",
+            padding: "4px 12px",
+            fontSize: "13px",
+          }}
+        >
+          リロード
+        </button>
+      </div>
       <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
         {messages.map((msg) => (
           <MailListItem

@@ -48,6 +48,7 @@ pub struct MessageListEntry {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GmailMessageListResponse {
+    #[serde(default)]
     pub messages: Vec<MessageListEntry>,
     pub next_page_token: Option<String>,
     #[serde(default)]

@@ -33,10 +33,12 @@ describe("MailList", () => {
 
   const mockOnSelect = vi.fn();
   const mockOnLoadMore = vi.fn();
+  const mockOnRefresh = vi.fn();
 
   beforeEach(() => {
     mockOnSelect.mockReset();
     mockOnLoadMore.mockReset();
+    mockOnRefresh.mockReset();
   });
 
   // --- Rendering ---
@@ -50,8 +52,10 @@ describe("MailList", () => {
         messages={mockMessages}
         onSelect={mockOnSelect}
         onLoadMore={mockOnLoadMore}
+        onRefresh={mockOnRefresh}
         hasMore={false}
         isLoading={false}
+        isLoadingMore={false}
         selectedId={null}
       />,
     );
@@ -69,8 +73,10 @@ describe("MailList", () => {
         messages={mockMessages}
         onSelect={mockOnSelect}
         onLoadMore={mockOnLoadMore}
+        onRefresh={mockOnRefresh}
         hasMore={false}
         isLoading={false}
+        isLoadingMore={false}
         selectedId={null}
       />,
     );
@@ -90,8 +96,10 @@ describe("MailList", () => {
         messages={mockMessages}
         onSelect={mockOnSelect}
         onLoadMore={mockOnLoadMore}
+        onRefresh={mockOnRefresh}
         hasMore={false}
         isLoading={false}
+        isLoadingMore={false}
         selectedId={null}
       />,
     );
@@ -110,8 +118,10 @@ describe("MailList", () => {
         messages={mockMessages}
         onSelect={mockOnSelect}
         onLoadMore={mockOnLoadMore}
+        onRefresh={mockOnRefresh}
         hasMore={false}
         isLoading={false}
+        isLoadingMore={false}
         selectedId={null}
       />,
     );
@@ -130,8 +140,10 @@ describe("MailList", () => {
         messages={mockMessages}
         onSelect={mockOnSelect}
         onLoadMore={mockOnLoadMore}
+        onRefresh={mockOnRefresh}
         hasMore={false}
         isLoading={false}
+        isLoadingMore={false}
         selectedId="msg2"
       />,
     );
@@ -150,8 +162,10 @@ describe("MailList", () => {
         messages={mockMessages}
         onSelect={mockOnSelect}
         onLoadMore={mockOnLoadMore}
+        onRefresh={mockOnRefresh}
         hasMore={false}
         isLoading={false}
+        isLoadingMore={false}
         selectedId="msg2"
       />,
     );
@@ -172,8 +186,10 @@ describe("MailList", () => {
         messages={mockMessages}
         onSelect={mockOnSelect}
         onLoadMore={mockOnLoadMore}
+        onRefresh={mockOnRefresh}
         hasMore={true}
         isLoading={false}
+        isLoadingMore={false}
         selectedId={null}
       />,
     );
@@ -190,8 +206,10 @@ describe("MailList", () => {
         messages={mockMessages}
         onSelect={mockOnSelect}
         onLoadMore={mockOnLoadMore}
+        onRefresh={mockOnRefresh}
         hasMore={false}
         isLoading={false}
+        isLoadingMore={false}
         selectedId={null}
       />,
     );
@@ -229,8 +247,10 @@ describe("MailList", () => {
           messages={mockMessages}
           onSelect={mockOnSelect}
           onLoadMore={mockOnLoadMore}
+          onRefresh={mockOnRefresh}
           hasMore={true}
           isLoading={false}
+          isLoadingMore={false}
           selectedId={null}
         />,
       );
@@ -268,8 +288,10 @@ describe("MailList", () => {
           messages={mockMessages}
           onSelect={mockOnSelect}
           onLoadMore={mockOnLoadMore}
+          onRefresh={mockOnRefresh}
           hasMore={true}
           isLoading={false}
+          isLoadingMore={false}
           selectedId={null}
         />,
       );
@@ -294,8 +316,10 @@ describe("MailList", () => {
         messages={[]}
         onSelect={mockOnSelect}
         onLoadMore={mockOnLoadMore}
+        onRefresh={mockOnRefresh}
         hasMore={false}
         isLoading={false}
+        isLoadingMore={false}
         selectedId={null}
       />,
     );
@@ -317,11 +341,83 @@ describe("MailList", () => {
         onLoadMore={mockOnLoadMore}
         hasMore={false}
         isLoading={true}
+        isLoadingMore={false}
         selectedId={null}
+        onRefresh={mockOnRefresh}
       />,
     );
 
     // Then: loading indicator is visible
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
+  });
+
+  // --- Reload button ---
+
+  it("should render a reload button", () => {
+    // Given/When: rendering the mail list with messages
+    render(
+      <MailList
+        messages={mockMessages}
+        onSelect={mockOnSelect}
+        onLoadMore={mockOnLoadMore}
+        hasMore={false}
+        isLoading={false}
+        isLoadingMore={false}
+        selectedId={null}
+        onRefresh={mockOnRefresh}
+      />,
+    );
+
+    // Then: a reload button is present
+    expect(
+      screen.getByRole("button", { name: /リロード|reload|refresh|再取得/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("should call onRefresh when reload button is clicked", () => {
+    // Given: rendering the mail list
+    render(
+      <MailList
+        messages={mockMessages}
+        onSelect={mockOnSelect}
+        onLoadMore={mockOnLoadMore}
+        hasMore={false}
+        isLoading={false}
+        isLoadingMore={false}
+        selectedId={null}
+        onRefresh={mockOnRefresh}
+      />,
+    );
+
+    // When: clicking the reload button
+    fireEvent.click(
+      screen.getByRole("button", { name: /リロード|reload|refresh|再取得/i }),
+    );
+
+    // Then: onRefresh is called
+    expect(mockOnRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("should disable reload button when isLoading is true", () => {
+    // Given/When: rendering in loading state with onRefresh
+    render(
+      <MailList
+        messages={[]}
+        onSelect={mockOnSelect}
+        onLoadMore={mockOnLoadMore}
+        hasMore={false}
+        isLoading={true}
+        isLoadingMore={false}
+        selectedId={null}
+        onRefresh={mockOnRefresh}
+      />,
+    );
+
+    // Then: reload button is not rendered during loading
+    // (loading indicator replaces the entire list via early return)
+    const reloadButton = screen.queryByRole("button", {
+      name: /リロード|reload|refresh|再取得/i,
+    });
+    expect(reloadButton).not.toBeInTheDocument();
   });
 });
