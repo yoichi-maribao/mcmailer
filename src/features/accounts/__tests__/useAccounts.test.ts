@@ -4,11 +4,13 @@ import { renderHook, act } from "@testing-library/react";
 const mockListAccounts = vi.fn();
 const mockSwitchAccount = vi.fn();
 const mockStartOAuth = vi.fn();
+const mockRemoveAccount = vi.fn();
 
 vi.mock("../../../shared/commands", () => ({
   listAccounts: (...args: unknown[]) => mockListAccounts(...args),
   switchAccount: (...args: unknown[]) => mockSwitchAccount(...args),
   startOAuth: (...args: unknown[]) => mockStartOAuth(...args),
+  removeAccount: (...args: unknown[]) => mockRemoveAccount(...args),
 }));
 
 import { useAccounts } from "../useAccounts";
@@ -18,6 +20,7 @@ describe("useAccounts", () => {
     mockListAccounts.mockReset();
     mockSwitchAccount.mockReset();
     mockStartOAuth.mockReset();
+    mockRemoveAccount.mockReset();
   });
 
   // --- Initial loading ---
@@ -119,6 +122,103 @@ describe("useAccounts", () => {
 
     // Then: startOAuth was called
     expect(mockStartOAuth).toHaveBeenCalled();
+  });
+
+  // --- Error handling ---
+
+  // --- removeCurrentAccount ---
+
+  it("should remove current account and switch to remaining account", async () => {
+    // Given: two accounts loaded, user1 is active
+    const initialAccounts = [
+      { email: "user1@gmail.com", isActive: true },
+      { email: "user2@gmail.com", isActive: false },
+    ];
+    mockListAccounts.mockResolvedValueOnce(initialAccounts);
+    const { result } = renderHook(() => useAccounts());
+    await act(async () => {});
+
+    // When: removing the current account
+    mockRemoveAccount.mockResolvedValueOnce(undefined);
+    // After remove, listAccounts returns only user2
+    const afterRemove = [{ email: "user2@gmail.com", isActive: false }];
+    mockListAccounts.mockResolvedValueOnce(afterRemove);
+    // After switchAccount, listAccounts returns user2 as active
+    mockSwitchAccount.mockResolvedValueOnce(undefined);
+    const afterSwitch = [{ email: "user2@gmail.com", isActive: true }];
+    mockListAccounts.mockResolvedValueOnce(afterSwitch);
+
+    let removeResult: { remaining: unknown[] } | undefined;
+    await act(async () => {
+      removeResult = await result.current.removeCurrentAccount();
+    });
+
+    // Then: removeAccount was called with the active email
+    expect(mockRemoveAccount).toHaveBeenCalledWith("user1@gmail.com");
+    // Then: switchAccount was called with the first remaining account
+    expect(mockSwitchAccount).toHaveBeenCalledWith("user2@gmail.com");
+    // Then: remaining accounts are returned
+    expect(removeResult!.remaining).toEqual(afterSwitch);
+    // Then: accounts state is updated
+    expect(result.current.accounts).toEqual(afterSwitch);
+  });
+
+  it("should remove current account and return empty when last account", async () => {
+    // Given: one account loaded
+    const initialAccounts = [{ email: "user1@gmail.com", isActive: true }];
+    mockListAccounts.mockResolvedValueOnce(initialAccounts);
+    const { result } = renderHook(() => useAccounts());
+    await act(async () => {});
+
+    // When: removing the last account
+    mockRemoveAccount.mockResolvedValueOnce(undefined);
+    mockListAccounts.mockResolvedValueOnce([]);
+
+    let removeResult: { remaining: unknown[] } | undefined;
+    await act(async () => {
+      removeResult = await result.current.removeCurrentAccount();
+    });
+
+    // Then: removeAccount was called
+    expect(mockRemoveAccount).toHaveBeenCalledWith("user1@gmail.com");
+    // Then: switchAccount was NOT called (no remaining accounts)
+    expect(mockSwitchAccount).not.toHaveBeenCalled();
+    // Then: empty remaining is returned
+    expect(removeResult!.remaining).toEqual([]);
+    // Then: accounts state is empty
+    expect(result.current.accounts).toEqual([]);
+  });
+
+  it("should throw when removeCurrentAccount is called with no active account", async () => {
+    // Given: no accounts loaded
+    mockListAccounts.mockResolvedValueOnce([]);
+    const { result } = renderHook(() => useAccounts());
+    await act(async () => {});
+
+    // When/Then: removeCurrentAccount throws
+    await act(async () => {
+      await expect(result.current.removeCurrentAccount()).rejects.toThrow(
+        "No active account to remove",
+      );
+    });
+  });
+
+  it("should set error when removeCurrentAccount fails", async () => {
+    // Given: one account loaded
+    mockListAccounts.mockResolvedValueOnce([
+      { email: "user1@gmail.com", isActive: true },
+    ]);
+    const { result } = renderHook(() => useAccounts());
+    await act(async () => {});
+
+    // When: removeAccount backend call fails
+    mockRemoveAccount.mockRejectedValueOnce(new Error("Remove failed"));
+    await act(async () => {
+      await result.current.removeCurrentAccount().catch(() => {});
+    });
+
+    // Then: error is set
+    expect(result.current.error).toBe("Remove failed");
   });
 
   // --- Error handling ---

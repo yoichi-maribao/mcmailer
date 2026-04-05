@@ -7,6 +7,7 @@ interface HeaderBarProps {
   onToggleSidebar: () => void;
   onSwitchAccount: (email: string) => void;
   onAddAccount: () => void;
+  onLogout: () => void;
 }
 
 export function HeaderBar({
@@ -15,6 +16,7 @@ export function HeaderBar({
   onToggleSidebar,
   onSwitchAccount,
   onAddAccount,
+  onLogout,
 }: HeaderBarProps) {
   return (
     <header
@@ -48,6 +50,7 @@ export function HeaderBar({
         activeAccount={activeAccount}
         onSwitchAccount={onSwitchAccount}
         onAddAccount={onAddAccount}
+        onLogout={onLogout}
       />
     </header>
   );
